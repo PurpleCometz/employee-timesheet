@@ -160,7 +160,7 @@ function renderLeaveRecords(db, account, onDbChange) {
           cancelBtn.className = "btn btn-ghost btn-sm";
           cancelBtn.style.color = "var(--red, #ef4444)";
           cancelBtn.textContent = "Cancel";
-          cancelBtn.addEventListener("click", () => deleteLeave(l));
+          cancelBtn.addEventListener("click", () => openCancelModal(l));
           actions.appendChild(cancelBtn);
         }
       }
@@ -222,7 +222,62 @@ function renderLeaveRecords(db, account, onDbChange) {
       showToast(err.message || "Could not delete record.", "error");
     }
   }
-
+  
+  // ── Employee: cancel confirmation modal ───────────────
+  function openCancelModal(leave) {
+    const body = document.createElement("div");
+    body.style.display = "flex";
+    body.style.flexDirection = "column";
+    body.style.gap = "18px";
+ 
+    const message = document.createElement("p");
+    message.className = "text-sm";
+    message.textContent =
+      "Are you sure you want to cancel this leave request? This action cannot be undone.";
+ 
+    body.appendChild(message);
+ 
+    const footer = document.createElement("div");
+    footer.className = "modal-footer";
+ 
+    const keepBtn = document.createElement("button");
+    keepBtn.className = "btn btn-outline";
+    keepBtn.textContent = "Keep Request";
+ 
+    const cancelBtn = document.createElement("button");
+    cancelBtn.className = "btn btn-danger";
+    cancelBtn.innerHTML = `Cancel Request`;
+ 
+    footer.appendChild(keepBtn);
+    footer.appendChild(cancelBtn);
+    body.appendChild(footer);
+ 
+    const { close } = openModal({
+      title: "Cancel Leave Request",
+      body,
+    });
+ 
+    keepBtn.addEventListener("click", close);
+ 
+    cancelBtn.addEventListener("click", async () => {
+      cancelBtn.disabled = true;
+ 
+      try {
+        await apiRequest(`/leave_records.php?id=${leave.leave_id}`, {
+          method: "DELETE",
+        });
+ 
+        await reloadLeaves();
+        close();
+        showToast("Leave request cancelled.", "success");
+        refresh();
+      } catch (err) {
+        showToast(err.message || "Could not cancel leave request.", "error");
+        cancelBtn.disabled = false;
+      }
+    });
+  }
+  
   // ── Admin: full leave details modal ──────────────────
   function openLeaveDetailsModal(leave) {
     const emp = db.employees.find(e => e.employee_id === leave.employee_id) || null;
